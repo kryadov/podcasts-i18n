@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Audio Podcast Language Converter</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Audio Podcast Language Converter</h1>
+
+    <section class="card">
+      <h2>Upload and Configure</h2>
+      <form id="upload-form">
+        <div class="field">
+          <label for="file">Input text file</label>
+          <input id="file" name="file" type="file" accept=".txt" required />
+        </div>
+
+        <div class="field">
+          <label for="input_language">Input language</label>
+          <input id="input_language" name="input_language" type="text" value="ru-RU" />
+        </div>
+
+        <div class="field">
+          <label for="output_language">Output language</label>
+          <input id="output_language" name="output_language" type="text" value="en-US" />
+        </div>
+
+        <div class="field">
+          <label for="voices">Available voices (comma separated)</label>
+          <input id="voices" name="voices" type="text" placeholder="e.g. en-US-VoiceA, en-US-VoiceB" />
+        </div>
+
+        <div id="speaker-mapping" class="mapping"></div>
+
+        <div class="field">
+          <label for="sample_rate_hz">Output sample rate (Hz)</label>
+          <input id="sample_rate_hz" name="sample_rate_hz" type="number" value="24000" />
+        </div>
+
+        <div class="field">
+          <label for="volume_gain_db">Volume gain (dB)</label>
+          <input id="volume_gain_db" name="volume_gain_db" type="number" step="0.5" value="0" />
+        </div>
+
+        <div class="field">
+          <button type="submit">Generate audio</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Progress & Logs</h2>
+      <pre id="logs">Waiting for upload...</pre>
+      <div id="downloads"></div>
+    </section>
+
+    <section class="card">
+      <h2>Supported Markup</h2>
+      <ul>
+        <li><code>[pause 1s]</code> or <code>[pause 500ms]</code> → inserts a break.</li>
+        <li><code>[sfx laughter]</code> → inserts an interjection marker.</li>
+        <li><code>[style whisper]text[/style]</code> → applies prosody style.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

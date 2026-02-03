@@ -1,0 +1,8 @@
+fastapi
+google-api-python-client
+httplib2
+jinja2
+python-multipart
+pydantic
+pytest
+uvicorn
