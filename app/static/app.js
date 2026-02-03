@@ -1,5 +1,36 @@
 const fileInput = document.getElementById("file");
-const voicesInput = document.getElementById("voices");
+const VOICE_OPTIONS = [
+  "Achernar",
+  "Achird",
+  "Algenib",
+  "Algieba",
+  "Alnilam",
+  "Aoede",
+  "Autonoe",
+  "Callirrhoe",
+  "Charon",
+  "Despina",
+  "Enceladus",
+  "Erinome",
+  "Fenrir",
+  "Gacrux",
+  "Iapetus",
+  "Kore",
+  "Laomedeia",
+  "Leda",
+  "Orus",
+  "Puck",
+  "Pulcherrima",
+  "Rasalgethi",
+  "Sadachbia",
+  "Sadaltager",
+  "Schedar",
+  "Sulafat",
+  "Umbriel",
+  "Vindemiatrix",
+  "Zephyr",
+  "Zubenelgenubi",
+];
 const mappingContainer = document.getElementById("speaker-mapping");
 const logsEl = document.getElementById("logs");
 const downloadsEl = document.getElementById("downloads");
@@ -33,11 +64,6 @@ function renderSpeakerMapping(speakers) {
     return;
   }
 
-  const voices = voicesInput.value
-    .split(",")
-    .map((v) => v.trim())
-    .filter(Boolean);
-
   speakers.forEach((speaker) => {
     const row = document.createElement("div");
     row.className = "mapping-row";
@@ -45,20 +71,17 @@ function renderSpeakerMapping(speakers) {
     const label = document.createElement("label");
     label.textContent = `Voice for ${speaker}`;
 
-    let input;
-    if (voices.length > 0) {
-      input = document.createElement("select");
-      voices.forEach((voice) => {
-        const opt = document.createElement("option");
-        opt.value = voice;
-        opt.textContent = voice;
-        input.appendChild(opt);
-      });
-    } else {
-      input = document.createElement("input");
-      input.type = "text";
-      input.placeholder = "Enter voice name";
-    }
+    const input = document.createElement("select");
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "Auto (no voice override)";
+    input.appendChild(empty);
+    VOICE_OPTIONS.forEach((voice) => {
+      const opt = document.createElement("option");
+      opt.value = voice;
+      opt.textContent = voice;
+      input.appendChild(opt);
+    });
 
     input.dataset.speaker = speaker;
     row.appendChild(label);
@@ -79,16 +102,10 @@ fileInput.addEventListener("change", (event) => {
   reader.readAsText(file, "UTF-8");
 });
 
-voicesInput.addEventListener("input", () => {
-  const speakers = Array.from(mappingContainer.querySelectorAll("[data-speaker]")).map(
-    (input) => input.dataset.speaker
-  );
-  renderSpeakerMapping(speakers);
-});
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  logsEl.textContent = "Processing...";
+  logsEl.textContent = "Starting processing...";
   downloadsEl.innerHTML = "";
 
   const file = fileInput.files[0];
@@ -107,28 +124,85 @@ form.addEventListener("submit", async (event) => {
   const formData = new FormData(form);
   formData.append("voice_map_json", JSON.stringify(voiceMap));
 
+  const logs = [];
+  const appendLog = (message) => {
+    logs.push(message);
+    logsEl.textContent = logs.join("\n");
+  };
+
   try {
     const response = await fetch("/process", {
       method: "POST",
       body: formData,
     });
 
-    const data = await response.json();
     if (!response.ok) {
+      const data = await response.json();
       logsEl.textContent = data.detail || "Processing failed.";
       return;
     }
 
-    logsEl.textContent = data.logs.join("\n");
-    downloadsEl.innerHTML = "";
-    data.downloads.forEach((url, index) => {
-      const link = document.createElement("a");
-      link.href = url;
-      link.textContent = `Download audio ${index + 1}`;
-      link.className = "download-link";
-      link.target = "_blank";
-      downloadsEl.appendChild(link);
-    });
+    if (!response.body) {
+      logsEl.textContent = "No response stream available.";
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    const handlePayload = (payload) => {
+      if (!payload || typeof payload !== "object") return;
+      if (payload.type === "log") {
+        appendLog(payload.message);
+        return;
+      }
+      if (payload.type === "error") {
+        logsEl.textContent = payload.message || "Processing failed.";
+        downloadsEl.innerHTML = "";
+        return;
+      }
+      if (payload.type === "result") {
+        const resultLogs = Array.isArray(payload.logs) ? payload.logs : logs;
+        logsEl.textContent = resultLogs.join("\n");
+        downloadsEl.innerHTML = "";
+        (payload.downloads || []).forEach((url, index) => {
+          const link = document.createElement("a");
+          link.href = url;
+          link.textContent = `Download audio ${index + 1}`;
+          link.className = "download-link";
+          link.target = "_blank";
+          downloadsEl.appendChild(link);
+        });
+      }
+    };
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      lines.forEach((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        try {
+          const payload = JSON.parse(trimmed);
+          handlePayload(payload);
+        } catch (error) {
+          // Ignore partial/invalid JSON chunks.
+        }
+      });
+    }
+
+    const tail = buffer.trim();
+    if (tail) {
+      try {
+        handlePayload(JSON.parse(tail));
+      } catch (error) {
+        // Ignore trailing invalid JSON.
+      }
+    }
   } catch (error) {
     logsEl.textContent = `Error: ${error.message}`;
   }

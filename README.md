@@ -1,6 +1,6 @@
 ### Audio Podcast Language Converter
 
-FastAPI web app that uploads a speaker-labeled text file, translates it with `gemini-2.5-pro-preview-tts`, prepares SSML (with supported markup), and generates MP3 audio output.
+FastAPI web app that uploads a speaker-labeled text file, translates it with `gemini-2.5-pro`, prepares SSML (with supported markup), and generates MP3 audio output.
 
 ### Features
 - Upload `.txt` input with speaker labels (e.g., `Спикер 1 00:00:09`).
@@ -8,6 +8,8 @@ FastAPI web app that uploads a speaker-labeled text file, translates it with `ge
 - Configure speaker-to-voice mapping, sample rate, and volume gain.
 - Auto-detect intro segments, prepare SSML with non-speech/style tags, and save artifacts.
 - Chunk long inputs when SSML exceeds the configured limit.
+
+![img.png](img.png)
 
 ### Requirements
 - Python `3.13`
@@ -20,10 +22,14 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Copy `.env.example` to `.env` and update values as needed.
+
 ### Environment Variables
 - `GOOGLE_API_KEY` (required): Google API key.
 - `APP_DATA_DIR` (optional, default `/data`): Base folder for uploads, artifacts, and audio.
 - `MAX_SSML_CHARS` (optional, default `5000`): SSML length threshold for chunking.
+
+The app loads variables from `.env` automatically (via `python-dotenv`).
 
 If you do not have permissions for `/data`, set `APP_DATA_DIR=./data`.
 
@@ -31,22 +37,19 @@ If you do not have permissions for `/data`, set `APP_DATA_DIR=./data`.
 #### macOS/Linux
 ```bash
 chmod +x start.sh
-export GOOGLE_API_KEY=your_key_here
-export APP_DATA_DIR=./data
+# Optionally rely on .env instead of exporting variables manually.
 ./start.sh
 ```
 
 #### Windows (PowerShell)
 ```powershell
-$env:GOOGLE_API_KEY = "your_key_here"
-$env:APP_DATA_DIR = "./data"
+# Optionally rely on .env instead of exporting variables manually.
 ./start.ps1
 ```
 
 ### Start (manual)
 ```bash
-export GOOGLE_API_KEY=your_key_here
-export APP_DATA_DIR=./data
+# Optionally rely on .env instead of exporting variables manually.
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
